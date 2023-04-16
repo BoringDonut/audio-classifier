@@ -9,3 +9,14 @@
 My playground project for Pytorch Lightning, Optuna and other tools
 
 Currently only works with Google's Speech Commands dataset, but I'll add something else later 
+
+## How to run
+
+Edit `n_trials`, `suggest_args` and `experiment_config` in [__main__.py](audio_classifier%2F__main__.py) the way you like
+
+Execute:
+```commandline
+python -m audio_classifier
+```
+
+Results would be saved to `optuna_results.db`, `lightning_logs` and `report_<datetime>.txt`
