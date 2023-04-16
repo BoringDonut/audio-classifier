@@ -32,7 +32,7 @@ class TrialArgs:
 
 
 def experiment_config():
-    n_proc = os.environ.get("n_proc", 0)
+    n_proc = int(os.environ.get("n_proc", 0))
     limit_train_batches = 5
     limit_val_batches = 5
     max_epochs = 4
