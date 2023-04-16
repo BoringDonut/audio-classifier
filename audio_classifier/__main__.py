@@ -84,7 +84,12 @@ def objective(trial: optuna.Trial):
     trainer.fit(model=model, train_dataloaders=data.train_dataloader(), val_dataloaders=data.val_dataloader())
 
     metric = trainer.callback_metrics["val_loss"]
-    trainer.logger.log_hyperparams(trial_args.as_dict, metrics={"val_loss_final": float(metric)})
+    trainer.logger.log_hyperparams(trial_args.as_dict,
+                                   metrics={
+                                       "val_loss_final": float(metric),
+                                       "val_accuracy_final": float(trainer.callback_metrics["val_accuracy"]),
+                                       "train_accuracy_final": float(trainer.callback_metrics["train_accuracy"]),
+                                   })
     return metric
 
 
