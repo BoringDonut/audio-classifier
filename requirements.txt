@@ -1,0 +1,8 @@
+datasets
+soundfile
+librosa
+torchmetrics
+lightning
+torch
+torchvision
+torchaudio
