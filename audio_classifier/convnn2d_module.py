@@ -82,18 +82,16 @@ class ConvNN2dModule(pl.LightningModule):
         _input, target = self.preprocess(batch)
         prediction = self.model(_input)
         loss = self.loss_fn(prediction, target)
-        self.log("train_loss", loss)
         self.train_accuracy.update(prediction, target)
-        self.log("train_accuracy", self.train_accuracy, on_step=False, on_epoch=True)
+        self.log_dict({"train_accuracy": self.train_accuracy, "train_loss": loss}, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         _input, target = self.preprocess(batch)
         prediction = self.model(_input)
         loss = self.loss_fn(prediction, target)
-        self.log("val_loss", loss)
         self.val_accuracy.update(prediction, target)
-        self.log("val_accuracy", self.val_accuracy, on_step=False, on_epoch=True)
+        self.log_dict({"val_accuracy": self.val_accuracy, "val_loss": loss}, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
         _input, target = self.preprocess(batch)
