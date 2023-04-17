@@ -1,11 +1,13 @@
 """Select best model with Torch Lightning and Optuna."""
 import os
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 
 import optuna
 import torch
 import torchaudio
+from lightning.pytorch.callbacks import Checkpoint
 from lightning.pytorch.loggers import TensorBoardLogger
 import lightning.pytorch as pl
 
@@ -64,6 +66,23 @@ def suggest_args(trial: optuna.Trial):
     return preprocessing, args
 
 
+class BestLossTracker(Checkpoint):
+
+    def __init__(self):
+        self.best_train_accuracy = 0
+        self.best_train_loss = sys.maxsize
+        self.best_val_accuracy = 0
+        self.best_val_loss = sys.maxsize
+
+    def on_validation_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        """Save a checkpoint at the end of the validation stage."""
+        if trainer.callback_metrics.get("val_loss", sys.maxsize) < self.best_val_loss:
+            self.best_val_accuracy = trainer.callback_metrics.get("val_accuracy", 0)
+            self.best_val_loss = trainer.callback_metrics.get("val_loss", sys.maxsize)
+            self.best_train_accuracy = trainer.callback_metrics.get("train_accuracy", 0)
+            self.best_train_loss = trainer.callback_metrics.get("train_loss", sys.maxsize)
+
+
 def objective(trial: optuna.Trial):
     preprocessing, trial_args = suggest_args(trial)
     n_proc, limit_train_batches, limit_val_batches, max_epochs = experiment_config()
@@ -76,21 +95,23 @@ def objective(trial: optuna.Trial):
                            weight_decay=trial_args.weight_decay)
 
     logger = TensorBoardLogger(save_dir="lightning_logs", default_hp_metric=False)
+    metric_tracker = BestLossTracker()
     trainer = pl.Trainer(limit_train_batches=limit_train_batches,
                          limit_val_batches=limit_val_batches,
                          max_epochs=max_epochs,
-                         logger=logger)
+                         logger=logger,
+                         callbacks=[metric_tracker])
     trainer.logger.log_hyperparams(trial_args.as_dict)  # log before train starts
     trainer.fit(model=model, train_dataloaders=data.train_dataloader(), val_dataloaders=data.val_dataloader())
 
-    metric = trainer.callback_metrics["val_loss"]
     trainer.logger.log_hyperparams(trial_args.as_dict,
                                    metrics={
-                                       "val_loss_final": float(metric),
-                                       "val_accuracy_final": float(trainer.callback_metrics["val_accuracy"]),
-                                       "train_accuracy_final": float(trainer.callback_metrics["train_accuracy"]),
+                                       "val_loss_final": float(metric_tracker.best_val_loss),
+                                       "val_accuracy_final": float(metric_tracker.best_val_accuracy),
+                                       "train_loss_final": float(metric_tracker.best_train_loss),
+                                       "train_accuracy_final": float(metric_tracker.best_train_accuracy),
                                    })
-    return metric
+    return metric_tracker.best_val_loss
 
 
 def main():
